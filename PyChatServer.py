@@ -39,6 +39,8 @@ class ChatServer(object):
     self.connections.append(connection)
     print 'We now have', len(self.connections), 'connections after adding', address
     self.connLock.release()
+    firstMessage = True
+    userName = 'NONAME'
     while not self.done:
       # Allow the thread to exit
       while True:
@@ -64,7 +66,15 @@ class ChatServer(object):
           break
         else:
           print 'Received:', data.strip(), os.linesep
-          self.sendDataToAllThreads(data)
+          if firstMessage:
+            firstMessage = False
+            userName = data
+            message = '--------------------' + os.linesep
+            message += userName + ' has connected to the chatroom' + os.linesep
+            message += '--------------------' + os.linesep
+          else:
+            message = ': '.join((userName, data))
+          self.sendDataToAllThreads(message)
 
 if __name__ == "__main__":
   op = optparse.OptionParser()
