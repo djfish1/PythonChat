@@ -2,6 +2,7 @@
 import optparse
 import os
 import socket
+import struct
 import sys
 import threading
 import time
@@ -17,7 +18,15 @@ class ChatServer(object):
     self.sock.bind((self.serverIp, self.serverPort))
     self.sock.listen(0)
     self.done = False
+    heartbeat = threading.Timer(1.0, self.timerEventHandler)
+    heartbeat.start()
     self.acceptConnections()
+
+  def timerEventHandler(self):
+    #print time.time(), 'Trying to send timer text'
+    self.sendDataToAllThreads('')
+    if not self.done:
+      threading.Timer(1.0, self.timerEventHandler).start()
 
   def acceptConnections(self):
     while True:
@@ -28,53 +37,63 @@ class ChatServer(object):
         self.done = True
         break
 
-  def sendDataToAllThreads(self, data):
+  def sendDataToAllThreads(self, text):
+    strLen = len(text)
+    payload = struct.pack('l{0:d}s'.format(strLen), strLen, text)
+    #if text != '':
+    #  print time.time(), 'Sending payload:', repr(payload)
     self.connLock.acquire()
     for conn in self.connections:
-      conn.send(data)
+      conn.send(payload)
     self.connLock.release()
 
   def threadHandler(self, connection, address):
     self.connLock.acquire()
     self.connections.append(connection)
-    print 'We now have', len(self.connections), 'connections after adding', address
+    connection.settimeout(2.0)
+    print time.time(), 'We now have', len(self.connections), 'connections after adding', address
     self.connLock.release()
     firstMessage = True
     userName = 'NONAME'
-    while not self.done:
-      # Allow the thread to exit
-      while True:
-        if self.done:
-          print 'Got a done'
-          break
-        try:
-          #print 'Trying to peek'
-          if connection.recv(1, socket.MSG_PEEK | socket.MSG_DONTWAIT) != '':
-            #print 'Data is available'
-            break
-        except BaseException as e:
-          pass
-        time.sleep(0.1)
-      if not self.done:
-        data = connection.recv(2056)
-        if data == '':
-          connection.close()
-          self.connLock.acquire()
-          self.connections.remove(connection)
-          print 'We now have', len(self.connections), 'connections after removing', address
-          self.connLock.release()
-          break
+    sizeSize = struct.calcsize('l')
+    threadDone = False
+    while not self.done and not threadDone:
+      payloadSizeData = connection.recv(sizeSize)
+      if payloadSizeData == '':
+        print 'Received empty data, breaking out of receive loop.'
+        threadDone = True
+        continue
+      (payloadSize,) = struct.unpack('l', payloadSizeData)
+      if payloadSize > 0:
+        print 'Trying to receive payload of size:', payloadSize
+        stringData = connection.recv(payloadSize)
+        if stringData == '':
+          threadDone = True
+          continue
         else:
-          print 'Received:', data.strip(), os.linesep
+          print time.time(), 'Received:', stringData.strip(), 'from', userName
           if firstMessage:
             firstMessage = False
-            userName = data
+            userName = stringData
             message = '--------------------' + os.linesep
             message += userName + ' has connected to the chatroom' + os.linesep
             message += '--------------------' + os.linesep
           else:
-            message = ': '.join((userName, data))
+            message = ''
+            splitMess = stringData.split(os.linesep)
+            for line in splitMess:
+              message += ': '.join((userName, line)) + os.linesep
+            #message = ': '.join((userName, stringData))
           self.sendDataToAllThreads(message)
+      else:
+        pass
+        #print 'Received heartbeat.'
+    else:
+      connection.close()
+      self.connLock.acquire()
+      self.connections.remove(connection)
+      print time.time(), 'We now have', len(self.connections), 'connections after removing', address
+      self.connLock.release()
 
 if __name__ == "__main__":
   op = optparse.OptionParser()

@@ -5,6 +5,7 @@ import gtk
 import optparse
 import os
 import socket
+import struct
 import sys
 import threading
 import time
@@ -16,6 +17,7 @@ class MainForm:
   def __init__(self, serverIp=None, serverPort=None):
     self.serverIp = serverIp
     self.serverPort = serverPort
+    self.connected = False
     self.text = ''
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     self.window.set_title("PyChat")
@@ -32,7 +34,7 @@ class MainForm:
     self.textBox.set_border_window_size(gtk.TEXT_WINDOW_BOTTOM,1)
     # Text Entry
     self.textEntry = gtk.TextView()
-    self.textEntry.set_wrap_mode(gtk.WRAP_WORD)
+    self.textEntry.set_wrap_mode(gtk.WRAP_NONE)
     self.textEntry.set_editable(True)
     self.textEntry.set_cursor_visible(False)  
     self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_LEFT,1)
@@ -42,14 +44,17 @@ class MainForm:
     self.scrollWinForTextBox = gtk.ScrolledWindow()
     self.scrollWinForTextBox.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
     self.scrollWinForTextBox.add(self.textBox)
-    self.scrollWinForTextBox.set_size_request(400, 120)
+    self.scrollWinForTextBox.set_size_request(400, 220)
     self.scrollWinForTextEntry = gtk.ScrolledWindow()
     self.scrollWinForTextEntry.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
     self.scrollWinForTextEntry.add(self.textEntry)
-    self.scrollWinForTextEntry.set_size_request(300, 40)
+    self.scrollWinForTextEntry.set_size_request(300, 60)
     # Submit button
-    self.submitButton = gtk.Button('Submit')
-    self.submitButton.connect('clicked', self.sendTextHandler)
+    self.submitButton = gtk.Button('submit')
+    self.submitButton.connect('clicked', self.submitHandler)
+    accelGroup = gtk.AccelGroup()
+    key, mod = gtk.accelerator_parse('<Control>s')
+    self.submitButton.add_accelerator('clicked', accelGroup, key, mod, gtk.ACCEL_VISIBLE)
 
     #grid = gtk.Grid()
     #grid.attach(self.scrollWinForTextBox, 0, 0, 4, 4)
@@ -59,26 +64,39 @@ class MainForm:
     vbox = gtk.VBox(homogeneous=False,spacing=5)
     vbox.pack_start(self.scrollWinForTextBox, expand=True)
     hbox = gtk.HBox(homogeneous=False, spacing=6)
-    hbox.set_size_request(400, 40)
+    hbox.set_size_request(400, 60)
     hbox.pack_start(self.scrollWinForTextEntry, expand=True)
     hbox.pack_end(self.submitButton, expand=False)
     vbox.pack_end(hbox, expand=False)
     self.window.add(vbox)
+    self.window.add_accel_group(accelGroup)
     self.sock = None
     self.done = False
     self.dataGetterThread = threading.Thread(target=self.getDataFromServer)
     self.dataGetterThread.start()
+    heartbeat = threading.Timer(1.0, self.timerEventHandler)
+    heartbeat.start()
     self.window.show_all()
 
-  def sendText(self, text):
-    if self.sock is not None:
-      #print 'Sending text:', curText
-      self.sock.send(text)
+  def timerEventHandler(self):
+    #print time.time(), 'Trying to send timer text'
+    self.sendText('')
+    if not self.done and self.connected:
+      threading.Timer(1.0, self.timerEventHandler).start()
 
-  def sendTextHandler(self, button):
+  def sendText(self, text):
+    strLen = len(text)
+    payload = struct.pack('l{0:d}s'.format(strLen), strLen, text)
+    #if text != '':
+    #  print time.time(), 'Sending payload:', repr(payload)
+    if (self.sock is not None) and (not self.done) and self.connected:
+      #print 'Sending text:', curText
+      self.sock.send(payload)
+
+  def submitHandler(self, button):
     textBuffer = self.textEntry.get_buffer()
     curText = textBuffer.get_text(textBuffer.get_start_iter() , textBuffer.get_end_iter())
-    curText = curText.strip() + os.linesep
+    curText = curText.strip().strip(os.linesep)
     self.sendText(curText)
     textBuffer.set_text('')
 
@@ -92,29 +110,30 @@ class MainForm:
   def getDataFromServer(self):
     self.sock = socket.socket()
     self.sock.connect((self.serverIp, self.serverPort))
+    self.connected = True
+    self.sock.settimeout(2.0)
     self.sendText(os.getenv('USER'))
+    sizeSize = struct.calcsize('l')
     while not self.done:
       #print 'Adding line:', line.strip()
-      while True:
-        if self.done:
-          print 'Got a done'
-          break
-        try:
-          if self.sock.recv(1, socket.MSG_PEEK | socket.MSG_DONTWAIT) != '':
-            #print 'Data is available'
-            break
-        except BaseException as e:
-          pass
-        time.sleep(0.1)
-      if not self.done:
-        stringData = self.sock.recv(2056)
+      payloadSizeData = self.sock.recv(sizeSize)
+      if payloadSizeData == '':
+        self.done = True
+        self.connected = False
+        continue
+      (payloadSize,) = struct.unpack('l', payloadSizeData)
+      #print 'Trying to receive a payload of size:', payloadSize
+      if payloadSize > 0:
+        stringData = self.sock.recv(payloadSize)
         if stringData == '':
           self.done = True
+          self.connected = False
         else:
           gobject.idle_add(self.updateText, stringData)
       else:
-        break
+        pass
     else:
+      print time.time(), 'Got a done'
       self.sock.close()
 
   def updateText(self, line):
