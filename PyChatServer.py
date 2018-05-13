@@ -6,21 +6,13 @@ import struct
 import sys
 import threading
 import time
+import MultiServer
 
-class ChatServer(object):
+class ChatServer(MultiServer.MultiServer):
   def __init__(self, serverIp=None, serverPort=None):
-    self.serverIp = serverIp
-    self.serverPort = serverPort
-
-    self.connections = []
-    self.connLock = threading.Lock()
-    self.sock = socket.socket()
-    self.sock.bind((self.serverIp, self.serverPort))
-    self.sock.listen(0)
-    self.done = False
-    heartbeat = threading.Timer(1.0, self.timerEventHandler)
-    heartbeat.start()
-    self.acceptConnections()
+    MultiServer.MultiServer.__init__(self, serverIp, serverPort)
+    threading.Timer(1.0, self.timerEventHandler).start()
+    self.start()
 
   def timerEventHandler(self):
     #print time.time(), 'Trying to send timer text'
@@ -28,24 +20,10 @@ class ChatServer(object):
     if not self.done:
       threading.Timer(1.0, self.timerEventHandler).start()
 
-  def acceptConnections(self):
-    while True:
-      try:
-        newThread = threading.Thread(target=self.threadHandler, args=self.sock.accept()).start()
-      except KeyboardInterrupt as e:
-        print 'Main thread done'
-        self.done = True
-        break
-
-  def sendDataToAllThreads(self, text):
+  def formPayload(self, text):
     strLen = len(text)
     payload = struct.pack('l{0:d}s'.format(strLen), strLen, text)
-    #if text != '':
-    #  print time.time(), 'Sending payload:', repr(payload)
-    self.connLock.acquire()
-    for conn in self.connections:
-      conn.send(payload)
-    self.connLock.release()
+    return payload
 
   def threadHandler(self, connection, address):
     self.connLock.acquire()
