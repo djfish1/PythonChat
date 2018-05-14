@@ -20,6 +20,7 @@ class MainForm:
     self.connected = False
     self.text = ''
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+    self.window.get_settings().set_string_property('gtk-font-name', 'monospace bold 10', '')
     self.window.set_title("PyChat")
     self.window.set_default_size(750,450)
     self.window.connect('destroy', self.doQuit)
@@ -41,6 +42,8 @@ class MainForm:
     self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_RIGHT,1)
     self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_TOP,1)
     self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_BOTTOM,1)
+    #tb = self.textEntry.get_buffer()
+    #tb.connect('changed', self.applyFont)
     self.scrollWinForTextBox = gtk.ScrolledWindow()
     self.scrollWinForTextBox.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
     self.scrollWinForTextBox.add(self.textBox)
@@ -77,6 +80,10 @@ class MainForm:
     heartbeat = threading.Timer(1.0, self.timerEventHandler)
     heartbeat.start()
     self.window.show_all()
+
+  #def applyFont(self, textBuffer):
+  #  fontSizeTag = textBuffer.create_tag(None, scale=1.0, scale_set=True, family='fixed', weight=800)
+  #  textBuffer.apply_tag(fontSizeTag, textBuffer.get_start_iter(), textBuffer.get_end_iter())
 
   def timerEventHandler(self):
     #print time.time(), 'Trying to send timer text'
@@ -134,21 +141,25 @@ class MainForm:
         pass
     else:
       print time.time(), 'Got a done'
+      self.updateText('WARNING: Connection to the server appears to be lost.')
       self.sock.close()
 
   def updateText(self, line):
     textBuffer = self.textBox.get_buffer()
+    #fontSizeTag = textBuffer.create_tag(None, scale=1.0, scale_set=True, family='fixed', weight=800)
     #curText = textBuffer.get_text(textBuffer.get_start_iter() , textBuffer.get_end_iter())
     #textBuffer.set_text(os.linesep.join((curText, line.strip(os.linesep))))
     #textBuffer.insert_with_tags(textBuffer.get_end_iter(), line.strip(os.linesep))))
     for keyWord, color in MainForm.recolorDict.items():
       if line.upper().find(keyWord.upper()) >= 0:
-        textTag = textBuffer.create_tag(None, foreground=color, family='fixed')
+        textTag = textBuffer.create_tag(None, foreground=color)
         #textTag.set_property('foreground', color)
+        #textBuffer.insert_with_tags(textBuffer.get_end_iter(), line, textTag, fontSizeTag)
         textBuffer.insert_with_tags(textBuffer.get_end_iter(), line, textTag)
         break
     else:
-      textBuffer.insert(textBuffer.get_end_iter(), line)
+      #textBuffer.insert_with_tags(textBuffer.get_end_iter(), line, fontSizeTag)
+      textBuffer.insert_with_tags(textBuffer.get_end_iter(), line)
 
 def main():
   gtk.main()

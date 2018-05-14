@@ -72,6 +72,7 @@ class ChatServer(MultiServer.MultiServer):
       self.connections.remove(connection)
       print time.time(), 'We now have', len(self.connections), 'connections after removing', address
       self.connLock.release()
+      self.sendDataToAllThreads(': '.join((userName, 'has left the chat.')) + os.linesep)
 
 if __name__ == "__main__":
   op = optparse.OptionParser()
