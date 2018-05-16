@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import optparse
 import os
 import socket
@@ -15,7 +16,7 @@ class ChatServer(MultiServer.MultiServer):
     self.start()
 
   def timerEventHandler(self):
-    #print time.time(), 'Trying to send timer text'
+    #print(time.time(), 'Trying to send timer text')
     self.sendDataToAllThreads('')
     if not self.done:
       threading.Timer(1.0, self.timerEventHandler).start()
@@ -29,7 +30,7 @@ class ChatServer(MultiServer.MultiServer):
     self.connLock.acquire()
     self.connections.append(connection)
     connection.settimeout(2.0)
-    print time.time(), 'We now have', len(self.connections), 'connections after adding', address
+    print(time.time(), 'We now have', len(self.connections), 'connections after adding', address)
     self.connLock.release()
     firstMessage = True
     userName = 'NONAME'
@@ -38,18 +39,18 @@ class ChatServer(MultiServer.MultiServer):
     while not self.done and not threadDone:
       payloadSizeData = connection.recv(sizeSize)
       if payloadSizeData == '':
-        print 'Received empty data, breaking out of receive loop.'
+        print('Received empty data, breaking out of receive loop.')
         threadDone = True
         continue
       (payloadSize,) = struct.unpack('l', payloadSizeData)
       if payloadSize > 0:
-        print 'Trying to receive payload of size:', payloadSize
+        print('Trying to receive payload of size:', payloadSize)
         stringData = connection.recv(payloadSize)
         if stringData == '':
           threadDone = True
           continue
         else:
-          print time.time(), 'Received:', stringData.strip(), 'from', userName
+          print(time.time(), 'Received:', stringData.strip(), 'from', userName)
           if firstMessage:
             firstMessage = False
             userName = stringData
@@ -65,12 +66,12 @@ class ChatServer(MultiServer.MultiServer):
           self.sendDataToAllThreads(message)
       else:
         pass
-        #print 'Received heartbeat.'
+        #print('Received heartbeat.')
     else:
       connection.close()
       self.connLock.acquire()
       self.connections.remove(connection)
-      print time.time(), 'We now have', len(self.connections), 'connections after removing', address
+      print(time.time(), 'We now have', len(self.connections), 'connections after removing', address)
       self.connLock.release()
       self.sendDataToAllThreads(': '.join((userName, 'has left the chat.')) + os.linesep)
 

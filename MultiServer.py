@@ -23,27 +23,27 @@ class MultiServer(object):
     self.acceptConnections()
 
   def acceptConnections(self):
-    print 'Creating socket'
+    print('Creating socket')
     self.sock = socket.socket()
-    print 'Binding socket'
+    print('Binding socket')
     self.sock.bind((self.serverIp, self.serverPort))
-    print 'Listening to socket'
+    print('Listening to socket')
     self.sock.listen(0)
     while True:
       try:
         newThread = threading.Thread(target=self.threadHandler, args=self.sock.accept()).start()
       except KeyboardInterrupt as e:
-        print 'Accept connections done'
+        print('Accept connections done')
         self.done = True
         break
     else:
-      print 'Closing socket'
+      print('Closing socket')
       self.sock.close()
 
   def sendDataToAllThreads(self, data):
     payload = self.formPayload(data)
     #if data != '':
-    #  print time.time(), 'Sending payload:', repr(payload)
+    #  print(time.time(), 'Sending payload:', repr(payload))
     self.connLock.acquire()
     for conn in self.connections:
       conn.send(payload)

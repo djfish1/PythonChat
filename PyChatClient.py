@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import fileinput
 import gobject
 import gtk
@@ -86,7 +87,7 @@ class MainForm:
   #  textBuffer.apply_tag(fontSizeTag, textBuffer.get_start_iter(), textBuffer.get_end_iter())
 
   def timerEventHandler(self):
-    #print time.time(), 'Trying to send timer text'
+    #print(time.time(), 'Trying to send timer text')
     self.sendText('')
     if not self.done and self.connected:
       threading.Timer(1.0, self.timerEventHandler).start()
@@ -95,9 +96,9 @@ class MainForm:
     strLen = len(text)
     payload = struct.pack('l{0:d}s'.format(strLen), strLen, text)
     #if text != '':
-    #  print time.time(), 'Sending payload:', repr(payload)
+    #  print(time.time(), 'Sending payload:', repr(payload))
     if (self.sock is not None) and (not self.done) and self.connected:
-      #print 'Sending text:', curText
+      #print('Sending text:', curText)
       self.sock.send(payload)
 
   def submitHandler(self, button):
@@ -122,14 +123,14 @@ class MainForm:
     self.sendText(os.getenv('USER'))
     sizeSize = struct.calcsize('l')
     while not self.done:
-      #print 'Adding line:', line.strip()
+      #print('Adding line:', line.strip())
       payloadSizeData = self.sock.recv(sizeSize)
       if payloadSizeData == '':
         self.done = True
         self.connected = False
         continue
       (payloadSize,) = struct.unpack('l', payloadSizeData)
-      #print 'Trying to receive a payload of size:', payloadSize
+      #print('Trying to receive a payload of size:', payloadSize)
       if payloadSize > 0:
         stringData = self.sock.recv(payloadSize)
         if stringData == '':
@@ -140,7 +141,7 @@ class MainForm:
       else:
         pass
     else:
-      print time.time(), 'Got a done'
+      print(time.time(), 'Got a done')
       self.updateText('WARNING: Connection to the server appears to be lost.')
       self.sock.close()
 
