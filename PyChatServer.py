@@ -21,9 +21,16 @@ class ChatServer(MultiServer.MultiServer):
     if not self.done:
       threading.Timer(1.0, self.timerEventHandler).start()
 
+  def textToBytes(self, text):
+    if sys.version_info.major == 2:
+      retBytes = text
+    else:
+      retBytes = bytes(text, 'ASCII')
+    return retBytes
+
   def formPayload(self, text):
     strLen = len(text)
-    payload = struct.pack('l{0:d}s'.format(strLen), strLen, text)
+    payload = struct.pack('l{0:d}s'.format(strLen), strLen, self.textToBytes(text))
     return payload
 
   def threadHandler(self, connection, address):
@@ -46,6 +53,7 @@ class ChatServer(MultiServer.MultiServer):
       if payloadSize > 0:
         print('Trying to receive payload of size:', payloadSize)
         stringData = connection.recv(payloadSize)
+        stringData = stringData.decode('ASCII')
         if stringData == '':
           threadDone = True
           continue
