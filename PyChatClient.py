@@ -96,23 +96,25 @@ class MainForm:
       self.root.protocol('WM_DELETE_WINDOW', self.doQuit)
       #contentFrame = tk.Frame()
       frame = tk.Frame(self.root, width=750, height=750)
-      frame.grid(column=0, row=0, sticky=(tk.N, tk.E, tk.W, tk.S))
+      frame.grid(column=0, row=0, sticky=(tk.N + tk.E + tk.W + tk.S))
       frame.columnconfigure(0, weight=10)
-      frame.rowconfigure(0, weight=10)
-      self.textBox = tk.Text(frame)
-      self.textBox.grid(column=0, row=0, columnspan=2, rowspan=1, sticky=(tk.N, tk.E, tk.W, tk.S))
-      self.textEntry = tk.Text(frame)
-      self.textEntry.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(tk.N, tk.E, tk.W, tk.S))
+      frame.rowconfigure(0, weight=5)
+      frame.columnconfigure(0, weight=1)
+      frame.rowconfigure(0, weight=1)
+      self.textBox = tk.Text(frame, width=70, height=30, wrap=tk.WORD, state=tk.DISABLED)
+      self.textBox.grid(column=0, row=0, columnspan=2, rowspan=1, sticky=(tk.N + tk.E + tk.W + tk.S))
+      self.textEntry = tk.Text(frame, width=50, height=5)
+      self.textEntry.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(tk.N + tk.E + tk.W + tk.S))
+      self.textEntry.focus()
       self.submitButton = tk.Button(frame, text="submit", command=self.submitHandler)
-      self.submitButton.grid(column=1, row=1, columnspan=1, rowspan=1, sticky=(tk.N, tk.E))
+      self.submitButton.grid(column=1, row=1, columnspan=1, rowspan=1, sticky=(tk.N + tk.E))
       for keyWord, color in MainForm.recolorDict.items():
         self.textBox.tag_configure(keyWord, foreground=color)
 
-      self.textBox.columnconfigure(0, weight=10)
-      self.textBox.rowconfigure(0, weight=10)
-      self.textBox.columnconfigure(1, weight=1)
-      self.textBox.rowconfigure(1, weight=3)
-      #self.root.update_idletasks()
+      #self.textBox.columnconfigure(0, weight=10)
+      #self.textBox.columnconfigure(1, weight=1)
+      #self.textBox.rowconfigure(0, weight=10)
+      #self.textBox.rowconfigure(1, weight=1)
       frame.pack()
       self.start()
 
@@ -245,12 +247,14 @@ class MainForm:
         #textBuffer.insert_with_tags(textBuffer.get_end_iter(), text, fontSizeTag)
         textBuffer.insert_with_tags(textBuffer.get_end_iter(), text)
     else:
+      self.textBox.config(state=tk.NORMAL)
       for keyWord, color in MainForm.recolorDict.items():
         if text.upper().find(keyWord.upper()) >= 0:
           self.textBox.insert('end', text, (keyWord, ))
           break
       else:
         self.textBox.insert('end', text)
+      self.textBox.config(state=tk.DISABLED)
 
 def main():
   gtk.main()
