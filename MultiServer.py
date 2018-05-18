@@ -45,8 +45,16 @@ class MultiServer(object):
     #if data != '':
     #  print(time.time(), 'Sending payload:', repr(payload))
     self.connLock.acquire()
+    connectionsToRemove = []
     for conn in self.connections:
-      conn.send(payload)
+      try:
+        conn.send(payload)
+      except BaseException as e:
+        print(time.time(), 'Unable to send data on connection:', conn, e)
+        connectionsToRemove.append(conn)
+    for conn in connectionsToRemove:
+      print(time.time(), 'Removing connection:', conn)
+      self.connections.remove(conn)
     self.connLock.release()
 
 
