@@ -12,14 +12,13 @@ import threading
 import time
 
 class MainForm:
-  recolorDict = {'STATUS' : '#00cc00',
+  recolorDict = {os.getenv('USER') : '#00a000',
                  'WARNING' : '#d0a000',
                  'ERROR' : '#e00000'}
   def __init__(self, serverIp=None, serverPort=None):
     self.serverIp = serverIp
     self.serverPort = serverPort
     self.connected = False
-    self.text = ''
     self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
     self.window.get_settings().set_string_property('gtk-font-name', 'monospace bold 10', '')
     self.window.set_title("PyChat")
