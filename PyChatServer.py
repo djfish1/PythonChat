@@ -22,8 +22,10 @@ class ChatServer(MultiServer.MultiServer):
       threading.Timer(1.0, self.timerEventHandler).start()
 
   def textToBytes(self, text):
+    #print('Major verion:', sys.version_info.major)
     if sys.version_info.major == 2:
-      retBytes = text
+      #print('Preserving original text,', text)
+      retBytes = str(text)
     else:
       retBytes = bytes(text, 'ASCII')
     return retBytes
@@ -63,9 +65,7 @@ class ChatServer(MultiServer.MultiServer):
           if firstMessage:
             firstMessage = False
             userName = stringData
-            message = '--------------------' + os.linesep
-            message += userName + ' has connected to the chatroom' + os.linesep
-            message += '--------------------' + os.linesep
+            message = '/**** Server: ' + userName + ' has connected to the chatroom ****/' + os.linesep
           else:
             message = ''
             splitMess = stringData.split(os.linesep)
