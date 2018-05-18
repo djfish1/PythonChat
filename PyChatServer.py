@@ -46,16 +46,24 @@ class ChatServer(MultiServer.MultiServer):
     sizeSize = struct.calcsize('l')
     threadDone = False
     while not self.done and not threadDone:
-      payloadSizeData = connection.recv(sizeSize)
+      try:
+        payloadSizeData = connection.recv(sizeSize)
+      except BaseException as e:
+        print(time.time(), 'Error while trying to receive data:', e)
+        payloadSizeData = ''
       if payloadSizeData == '' or payloadSizeData == b'':
         print('Received empty data, breaking out of receive loop.')
         threadDone = True
         continue
-      print('Received payloadSizeData:', payloadSizeData)
+      #print('Received payloadSizeData:', payloadSizeData)
       (payloadSize,) = struct.unpack('l', payloadSizeData)
       if payloadSize > 0:
         print('Trying to receive payload of size:', payloadSize)
-        stringData = connection.recv(payloadSize)
+        try:
+          stringData = connection.recv(payloadSize)
+        except BaseException as e:
+          print(time.time(), 'Error while trying to receive data:', e)
+          stringData = ''
         stringData = stringData.decode('ASCII')
         if stringData == '':
           threadDone = True
