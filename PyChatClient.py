@@ -133,9 +133,18 @@ class MainForm:
       self.sendText('')
       threading.Timer(1.0, self.timerEventHandler).start()
 
+  def textToBytes(self, text):
+    #print('Major verion:', sys.version_info.major)
+    if sys.version_info.major == 2:
+      #print('Preserving original text,', text)
+      retBytes = str(text)
+    else:
+      retBytes = bytes(text, 'ASCII')
+    return retBytes
+
   def sendText(self, text):
     strLen = len(text)
-    payload = struct.pack('l{0:d}s'.format(strLen), strLen, str(text))
+    payload = struct.pack('l{0:d}s'.format(strLen), strLen, self.textToBytes(text))
     #if text != '':
     #  print(time.time(), 'Sending payload:', repr(payload))
     if (self.sock is not None) and (not self.done) and self.connected:
@@ -182,9 +191,9 @@ class MainForm:
         payloadSizeData = self.sock.recv(sizeSize)
       except BaseException as e:
         print('Error trying to receive data:', e)
-        self.doBackgroundUpdateText('WARNING: Connection to the server appears to be lost.')
+        #self.doBackgroundUpdateText('WARNING: Connection to the server appears to be lost.')
         payloadSizeData = ''
-      if payloadSizeData == '':
+      if payloadSizeData == '' or payloadSizeData == b'':
         self.done = True
         self.connected = False
         continue
@@ -195,8 +204,9 @@ class MainForm:
           stringData = self.sock.recv(payloadSize)
         except BaseException as e:
           print('Error trying to receive data:', e)
-          self.doBackgroundUpdateText('WARNING: Connection to the server appears to be lost.')
+          #self.doBackgroundUpdateText('WARNING: Connection to the server appears to be lost.')
           stringData = ''
+        stringData = stringData.decode('ASCII')
         if stringData == '':
           self.done = True
           self.connected = False
