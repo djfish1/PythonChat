@@ -17,7 +17,7 @@ class ChatServer(MultiServer.MultiServer):
 
   def timerEventHandler(self):
     #print(time.time(), 'Trying to send timer text')
-    self.sendDataToAllThreads('')
+    self.sendDataToAllThreads('', '')
     if not self.done:
       threading.Timer(1.0, self.timerEventHandler).start()
 
@@ -30,9 +30,11 @@ class ChatServer(MultiServer.MultiServer):
       retBytes = bytes(text, 'ASCII')
     return retBytes
 
-  def formPayload(self, text):
+  def formPayload(self, userName, text):
     strLen = len(text)
-    payload = struct.pack('l{0:d}s'.format(strLen), strLen, self.textToBytes(text))
+    uLen = len(userName)
+    payload = struct.pack('ll{0:d}s{1:d}s'.format(uLen, strLen),
+        uLen, strLen, self.textToBytes(userName), self.textToBytes(text))
     return payload
 
   def threadHandler(self, connection, address):
@@ -43,7 +45,7 @@ class ChatServer(MultiServer.MultiServer):
     self.connLock.release()
     firstMessage = True
     userName = 'NONAME'
-    sizeSize = struct.calcsize('l')
+    sizeSize = struct.calcsize('ll')
     threadDone = False
     while not self.done and not threadDone:
       try:
@@ -56,41 +58,41 @@ class ChatServer(MultiServer.MultiServer):
         threadDone = True
         continue
       #print('Received payloadSizeData:', payloadSizeData)
-      (payloadSize,) = struct.unpack('l', payloadSizeData)
-      if payloadSize > 0:
-        print('Trying to receive payload of size:', payloadSize)
-        try:
-          stringData = connection.recv(payloadSize)
-        except BaseException as e:
-          print(time.time(), 'Error while trying to receive data:', e)
-          stringData = ''
-        stringData = stringData.decode('ASCII')
-        if stringData == '':
-          threadDone = True
-          continue
-        else:
-          print(time.time(), 'Received:', stringData.strip(), 'from', userName)
-          if firstMessage:
-            firstMessage = False
-            userName = stringData
-            message = '/**** Server: ' + userName + ' has connected to the chatroom ****/' + os.linesep
-          else:
-            message = ''
-            splitMess = stringData.split(os.linesep)
-            for line in splitMess:
-              message += ': '.join((userName, line)) + os.linesep
-            #message = ': '.join((userName, stringData))
-          self.sendDataToAllThreads(message)
+      (userNameSize, payloadSize) = struct.unpack('ll', payloadSizeData)
+      #print('Trying to receive payload of size:', userNameSize + payloadSize)
+      try:
+        stringData = connection.recv(userNameSize + payloadSize)
+      except BaseException as e:
+        print(time.time(), 'Error while trying to receive data:', e)
+        stringData = b''
+      if payloadSize == 0:
+        continue # this is a heartbeat
+      stringData = stringData.decode('ASCII')
+      if stringData == '':
+        threadDone = True
+        continue
       else:
-        pass
-        #print('Received heartbeat.')
+        if firstMessage:
+          firstMessage = False
+          userName = stringData[0:userNameSize]
+          userNameForMessage = 'PyChatServer'
+          message = '/**** ' + userName + ' has connected to the chatroom ****/' + os.linesep
+        else:
+          userNameForMessage = stringData[0:userNameSize]
+          rawMessage = stringData[userNameSize:]
+          splitMess = rawMessage.split(os.linesep)
+          message = ''
+          for line in splitMess:
+            message += ': '.join(('  '+userNameForMessage, line)) + os.linesep
+        #print(time.time(), 'Received:', rawMessage, 'from', userName)
+        self.sendDataToAllThreads(userNameForMessage, message)
     else:
       connection.close()
       self.connLock.acquire()
       self.connections.remove(connection)
       print(time.time(), 'We now have', len(self.connections), 'connections after removing', address)
       self.connLock.release()
-      self.sendDataToAllThreads(': '.join((userName, 'has left the chat.')) + os.linesep)
+      self.sendDataToAllThreads(userName, 'has left the chat.' + os.linesep)
 
 if __name__ == "__main__":
   op = optparse.OptionParser()

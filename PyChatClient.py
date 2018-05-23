@@ -24,16 +24,20 @@ except:
     print('Unable to import tkinter')
 
 class MainForm:
-  recolorDict = {os.getenv('USER') : '#00a000',
-                 'WARNING' : '#d0a000',
-                 'ERROR' : '#e00000'}
-  def __init__(self, serverIp=None, serverPort=None):
+  def __init__(self, serverIp=None, serverPort=None, userName=None):
     self.serverIp = serverIp
     self.serverPort = serverPort
     self.connected = False
     self.sock = None
     self.done = False
     self.useGtk = useGtk
+    if userName is None:
+      self.userName = os.getenv('USER')
+    else:
+      self.userName = userName
+    self.recolorDict = {self.userName : '#00a000',
+                   'WARNING' : '#d0a000',
+                   'ERROR' : '#e00000'}
     if self.useGtk:
       self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
       self.window.get_settings().set_string_property('gtk-font-name', 'monospace bold 10', '')
@@ -53,7 +57,7 @@ class MainForm:
       self.textEntry = gtk.TextView()
       self.textEntry.set_wrap_mode(gtk.WRAP_NONE)
       self.textEntry.set_editable(True)
-      self.textEntry.set_cursor_visible(False)  
+      self.textEntry.set_cursor_visible(False)
       self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_LEFT,1)
       self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_RIGHT,1)
       self.textEntry.set_border_window_size(gtk.TEXT_WINDOW_TOP,1)
@@ -97,24 +101,30 @@ class MainForm:
       #contentFrame = tk.Frame()
       frame = tk.Frame(self.root, width=750, height=750)
       frame.grid(column=0, row=0, sticky=(tk.N + tk.E + tk.W + tk.S))
-      frame.columnconfigure(0, weight=10)
       frame.rowconfigure(0, weight=5)
-      frame.columnconfigure(0, weight=1)
-      frame.rowconfigure(0, weight=1)
-      self.textBox = tk.Text(frame, width=70, height=30, wrap=tk.WORD, state=tk.DISABLED)
-      self.textBox.grid(column=0, row=0, columnspan=2, rowspan=1, sticky=(tk.N + tk.E + tk.W + tk.S))
-      self.textEntry = tk.Text(frame, width=50, height=5)
-      self.textEntry.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(tk.N + tk.E + tk.W + tk.S))
+      frame.rowconfigure(1, weight=1)
+      frame.columnconfigure(0, weight=10)
+      frame.columnconfigure(1, weight=1)
+      frame.columnconfigure(2, weight=2)
+      frame.columnconfigure(3, weight=1)
+      tbScrollbar = tk.Scrollbar(frame)
+      tbScrollbar.grid(column=3, row=0, columnspan=1, rowspan=1, sticky=(tk.N+tk.W+tk.S))
+      self.textBox = tk.Text(frame, width=120, height=50, wrap=tk.WORD, state=tk.DISABLED)
+      self.textBox.grid(column=0, row=0, columnspan=3, rowspan=1, sticky=(tk.E + tk.W))
+      self.textBox.config(yscrollcommand=tbScrollbar.set)
+      tbScrollbar.config(command=self.textBox.yview)
+      teScrollbar = tk.Scrollbar(frame)
+      teScrollbar.grid(column=1, row=1, columnspan=1, rowspan=1, sticky=(tk.N+tk.S+tk.W))
+      self.textEntry = tk.Text(frame, width=80, height=10, wrap=tk.WORD, state=tk.NORMAL)
+      self.textEntry.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(tk.E + tk.W))
+      self.textEntry.config(yscrollcommand=teScrollbar.set)
+      teScrollbar.config(command=self.textEntry.yview)
       self.textEntry.focus()
       self.submitButton = tk.Button(frame, text="submit", command=self.submitHandler)
-      self.submitButton.grid(column=1, row=1, columnspan=1, rowspan=1, sticky=(tk.N + tk.E))
-      for keyWord, color in MainForm.recolorDict.items():
-        self.textBox.tag_configure(keyWord, foreground=color)
+      self.submitButton.grid(column=2, row=1, columnspan=2, rowspan=1, sticky=(tk.S + tk.E))
+      for keyWord, color in self.recolorDict.items():
+        self.textBox.tag_configure(keyWord, foreground=color, background='#dddddd', lmargin1=50, lmargin2=50)
 
-      #self.textBox.columnconfigure(0, weight=10)
-      #self.textBox.columnconfigure(1, weight=1)
-      #self.textBox.rowconfigure(0, weight=10)
-      #self.textBox.rowconfigure(1, weight=1)
       frame.pack()
       self.start()
 
@@ -146,7 +156,9 @@ class MainForm:
 
   def sendText(self, text):
     strLen = len(text)
-    payload = struct.pack('l{0:d}s'.format(strLen), strLen, self.textToBytes(text))
+    uLen = len(self.userName)
+    payload = struct.pack('ll{0:d}s{1:d}s'.format(uLen, strLen),
+        uLen, strLen, self.textToBytes(self.userName), self.textToBytes(text))
     #if text != '':
     #  print(time.time(), 'Sending payload:', repr(payload))
     if (self.sock is not None) and (not self.done) and self.connected:
@@ -186,8 +198,8 @@ class MainForm:
     self.connected = True
     print(time.time(), 'Succussfully connected to', self.serverIp)
     self.sock.settimeout(2.0)
-    self.sendText(os.getenv('USER'))
-    sizeSize = struct.calcsize('l')
+    self.sendText(self.userName)
+    sizeSize = struct.calcsize('ll')
     while not self.done:
       try:
         payloadSizeData = self.sock.recv(sizeSize)
@@ -199,11 +211,11 @@ class MainForm:
         self.done = True
         self.connected = False
         continue
-      (payloadSize,) = struct.unpack('l', payloadSizeData)
+      (uNameSize, payloadSize) = struct.unpack('ll', payloadSizeData)
       if payloadSize > 0:
         print('Trying to receive a payload of size:', payloadSize)
         try:
-          stringData = self.sock.recv(payloadSize)
+          stringData = self.sock.recv(uNameSize + payloadSize)
         except BaseException as e:
           print('Error trying to receive data:', e)
           #self.doBackgroundUpdateText('WARNING: Connection to the server appears to be lost.')
@@ -213,7 +225,7 @@ class MainForm:
           self.done = True
           self.connected = False
         else:
-          self.doBackgroundUpdateText(stringData)
+          self.doBackgroundUpdateText(stringData[0:uNameSize], stringData[uNameSize:])
       else:
         pass
     else:
@@ -222,38 +234,32 @@ class MainForm:
       self.sock.close()
     print(time.time(), 'End of getDataFromServer')
 
-  def doBackgroundUpdateText(self, text):
+  def doBackgroundUpdateText(self, userName, text):
     if self.useGtk:
-      gobject.idle_add(self.updateText, text)
+      gobject.idle_add(self.updateText, (userName, text))
     else:
-      print('Trying to after_idle add text:', text)
-      self.root.after_idle(self.updateText, text)
+      print('Trying to after_idle add text:', text, 'from user:', userName)
+      self.root.after_idle(self.updateText, userName, text)
 
-  def updateText(self, text):
+  def updateText(self, userName, text):
+    textToAdd = userName + ':' + os.linesep + text
     if self.useGtk:
       textBuffer = self.textBox.get_buffer()
-      #fontSizeTag = textBuffer.create_tag(None, scale=1.0, scale_set=True, family='fixed', weight=800)
-      #curText = textBuffer.get_text(textBuffer.get_start_iter() , textBuffer.get_end_iter())
-      #textBuffer.set_text(os.linesep.join((curText, text.strip(os.linesep))))
-      #textBuffer.insert_with_tags(textBuffer.get_end_iter(), text.strip(os.linesep))))
-      for keyWord, color in MainForm.recolorDict.items():
-        if text.upper().find(keyWord.upper()) >= 0:
+      for keyWord, color in self.recolorDict.items():
+        if userName.upper() == keyWord.upper():
           textTag = textBuffer.create_tag(None, foreground=color)
-          #textTag.set_property('foreground', color)
-          #textBuffer.insert_with_tags(textBuffer.get_end_iter(), text, textTag, fontSizeTag)
-          textBuffer.insert_with_tags(textBuffer.get_end_iter(), text, textTag)
+          textBuffer.insert_with_tags(textBuffer.get_end_iter(), textToAdd, textTag)
           break
       else:
-        #textBuffer.insert_with_tags(textBuffer.get_end_iter(), text, fontSizeTag)
-        textBuffer.insert_with_tags(textBuffer.get_end_iter(), text)
+        textBuffer.insert_with_tags(textBuffer.get_end_iter(), textToAdd)
     else:
       self.textBox.config(state=tk.NORMAL)
-      for keyWord, color in MainForm.recolorDict.items():
-        if text.upper().find(keyWord.upper()) >= 0:
-          self.textBox.insert('end', text, (keyWord, ))
+      for keyWord, color in self.recolorDict.items():
+        if userName.upper() == keyWord.upper():
+          self.textBox.insert('end', textToAdd, (keyWord, ))
           break
       else:
-        self.textBox.insert('end', text)
+        self.textBox.insert('end', textToAdd)
       self.textBox.config(state=tk.DISABLED)
 
 def main():
@@ -263,8 +269,9 @@ if __name__ == "__main__":
   op = optparse.OptionParser()
   op.add_option('-s', '--serverIp', type=str, dest='serverIp', help='Server IP', default=None)
   op.add_option('-p', '--serverPort', type=int, dest='serverPort', help='Server Port', default=None)
+  op.add_option('-u', '--userName', type=str, dest='userName', help='User name (debug only)', default=None)
   (opts, args) = op.parse_args()
-  mainForm = MainForm(opts.serverIp, opts.serverPort)
+  mainForm = MainForm(opts.serverIp, opts.serverPort, opts.userName)
   #mainForm.start()
   if mainForm.useGtk:
     gtk.gdk.threads_init()

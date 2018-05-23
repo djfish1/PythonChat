@@ -40,8 +40,8 @@ class MultiServer(object):
       print('Closing socket')
       self.sock.close()
 
-  def sendDataToAllThreads(self, data):
-    payload = self.formPayload(data)
+  def sendDataToAllThreads(self, userName, data):
+    payload = self.formPayload(userName, data)
     #if data != '':
     #  print(time.time(), 'Sending payload:', repr(payload))
     self.connLock.acquire()
