@@ -30,7 +30,9 @@ class ChatServer(MultiServer.MultiServer):
       retBytes = bytes(text, 'ASCII')
     return retBytes
 
-  def formPayload(self, userName, text):
+  def formPayload(self, args):
+    userName = args[0]
+    text = args[1]
     strLen = len(text)
     uLen = len(userName)
     payload = struct.pack('ll{0:d}s{1:d}s'.format(uLen, strLen),
@@ -72,16 +74,17 @@ class ChatServer(MultiServer.MultiServer):
         threadDone = True
         continue
       else:
+        timeStr = time.asctime(time.gmtime()) + 'Z'
+        message = timeStr + os.linesep
         if firstMessage:
           firstMessage = False
           userName = stringData[0:userNameSize]
           userNameForMessage = 'PyChatServer'
-          message = '/**** ' + userName + ' has connected to the chatroom ****/' + os.linesep
+          message += '/**** ' + userName + ' has connected to the chatroom ****/' + os.linesep
         else:
           userNameForMessage = stringData[0:userNameSize]
           rawMessage = stringData[userNameSize:]
           splitMess = rawMessage.split(os.linesep)
-          message = ''
           for line in splitMess:
             message += ': '.join(('  '+userNameForMessage, line)) + os.linesep
         #print(time.time(), 'Received:', rawMessage, 'from', userName)

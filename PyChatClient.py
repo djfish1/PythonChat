@@ -99,7 +99,7 @@ class MainForm:
       self.root = tk.Tk()
       self.root.protocol('WM_DELETE_WINDOW', self.doQuit)
       #contentFrame = tk.Frame()
-      frame = tk.Frame(self.root, width=750, height=750)
+      frame = tk.Frame(self.root)#, width=60, height=400)
       frame.grid(column=0, row=0, sticky=(tk.N + tk.E + tk.W + tk.S))
       frame.rowconfigure(0, weight=5)
       frame.rowconfigure(1, weight=1)
@@ -109,13 +109,13 @@ class MainForm:
       frame.columnconfigure(3, weight=1)
       tbScrollbar = tk.Scrollbar(frame)
       tbScrollbar.grid(column=3, row=0, columnspan=1, rowspan=1, sticky=(tk.N+tk.W+tk.S))
-      self.textBox = tk.Text(frame, width=120, height=50, wrap=tk.WORD, state=tk.DISABLED)
-      self.textBox.grid(column=0, row=0, columnspan=3, rowspan=1, sticky=(tk.E + tk.W))
+      self.textBox = tk.Text(frame, width=60, height=30, wrap=tk.WORD, state=tk.DISABLED)
+      self.textBox.grid(column=0, row=0, columnspan=3, rowspan=1, sticky=(tk.N + tk.E + tk.W))
       self.textBox.config(yscrollcommand=tbScrollbar.set)
       tbScrollbar.config(command=self.textBox.yview)
       teScrollbar = tk.Scrollbar(frame)
       teScrollbar.grid(column=1, row=1, columnspan=1, rowspan=1, sticky=(tk.N+tk.S+tk.W))
-      self.textEntry = tk.Text(frame, width=80, height=10, wrap=tk.WORD, state=tk.NORMAL)
+      self.textEntry = tk.Text(frame, width=60, height=5, wrap=tk.WORD, state=tk.NORMAL)
       self.textEntry.grid(column=0, row=1, columnspan=1, rowspan=1, sticky=(tk.E + tk.W))
       self.textEntry.config(yscrollcommand=teScrollbar.set)
       teScrollbar.config(command=self.textEntry.yview)
@@ -236,13 +236,14 @@ class MainForm:
 
   def doBackgroundUpdateText(self, userName, text):
     if self.useGtk:
-      gobject.idle_add(self.updateText, (userName, text))
+      gobject.idle_add(self.updateText, userName, text)
     else:
       print('Trying to after_idle add text:', text, 'from user:', userName)
       self.root.after_idle(self.updateText, userName, text)
 
   def updateText(self, userName, text):
-    textToAdd = userName + ':' + os.linesep + text
+    #textToAdd = userName + ':' + os.linesep + text
+    textToAdd = text
     if self.useGtk:
       textBuffer = self.textBox.get_buffer()
       for keyWord, color in self.recolorDict.items():
