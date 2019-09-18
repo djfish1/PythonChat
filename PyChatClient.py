@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 import fileinput
-useGtk = False
+useGtk = True
 try:
   import gobject
   import gtk
@@ -24,17 +24,17 @@ except:
     print('Unable to import tkinter')
 
 class MainForm:
-  def __init__(self, serverIp=None, serverPort=None, userName=None):
-    self.serverIp = serverIp
-    self.serverPort = serverPort
+  def __init__(self, opts):
+    self.serverIp = opts.serverIp
+    self.serverPort = opts.serverPort
     self.connected = False
     self.sock = None
     self.done = False
     self.useGtk = useGtk
-    if userName is None:
-      self.userName = os.getenv('USER')
-    else:
+    if hasattr(opts, 'userName') and opts.userName is not None:
       self.userName = userName
+    else:
+      self.userName = os.getenv('USER')
     self.recolorDict = {self.userName : '#00a000',
                    'WARNING' : '#d0a000',
                    'ERROR' : '#e00000'}
@@ -213,7 +213,7 @@ class MainForm:
         continue
       (uNameSize, payloadSize) = struct.unpack('ll', payloadSizeData)
       if payloadSize > 0:
-        print('Trying to receive a payload of size:', payloadSize)
+        #print('Trying to receive a payload of size:', payloadSize)
         try:
           stringData = self.sock.recv(uNameSize + payloadSize)
         except BaseException as e:
@@ -270,9 +270,9 @@ if __name__ == "__main__":
   op = optparse.OptionParser()
   op.add_option('-s', '--serverIp', type=str, dest='serverIp', help='Server IP', default=None)
   op.add_option('-p', '--serverPort', type=int, dest='serverPort', help='Server Port', default=None)
-  op.add_option('-u', '--userName', type=str, dest='userName', help='User name (debug only)', default=None)
+  #op.add_option('-u', '--userName', type=str, dest='userName', help='User name (debug only)', default=None)
   (opts, args) = op.parse_args()
-  mainForm = MainForm(opts.serverIp, opts.serverPort, opts.userName)
+  mainForm = MainForm(opts)
   #mainForm.start()
   if mainForm.useGtk:
     gtk.gdk.threads_init()

@@ -80,7 +80,7 @@ class ChatServer(MultiServer.MultiServer):
           firstMessage = False
           userName = stringData[0:userNameSize]
           userNameForMessage = 'PyChatServer'
-          message += '/**** ' + userName + ' has connected to the chatroom ****/' + os.linesep
+          message += '/**** ' + userName + ' has connected to the chatroom from ' + str(address) + ' ****/' + os.linesep
         else:
           userNameForMessage = stringData[0:userNameSize]
           rawMessage = stringData[userNameSize:]
