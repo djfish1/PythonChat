@@ -23,7 +23,7 @@ class ChatServer(MultiServer.MultiServer):
 
   def textToBytes(self, text):
     #print('Major verion:', sys.version_info.major)
-    if sys.version_info.major == 2:
+    if sys.version_info[0] == 2:
       #print('Preserving original text,', text)
       retBytes = str(text)
     else:
@@ -56,7 +56,7 @@ class ChatServer(MultiServer.MultiServer):
         print(time.time(), 'Error while trying to receive data:', e)
         payloadSizeData = ''
       if payloadSizeData == '' or payloadSizeData == b'':
-        print('Received empty data, breaking out of receive loop.')
+        #print('Received empty data, breaking out of receive loop.')
         threadDone = True
         continue
       #print('Received payloadSizeData:', payloadSizeData)
@@ -88,14 +88,17 @@ class ChatServer(MultiServer.MultiServer):
           for line in splitMess:
             message += ': '.join(('  '+userNameForMessage, line)) + os.linesep
         #print(time.time(), 'Received:', rawMessage, 'from', userName)
+        print(message)
         self.sendDataToAllThreads(userNameForMessage, message)
     else:
       connection.close()
       self.connLock.acquire()
       self.connections.remove(connection)
-      print(time.time(), 'We now have', len(self.connections), 'connections after removing', address)
       self.connLock.release()
-      self.sendDataToAllThreads(userName, 'has left the chat.' + os.linesep)
+      print(userName, address, 'has left the chat')
+      print(time.time(), 'We now have', len(self.connections), 'connections after removing', address)
+      userNameForMessage = 'PyChatServer'
+      self.sendDataToAllThreads(userNameForMessage, userName + ' has left the chat ' + str(address) + os.linesep)
 
 if __name__ == "__main__":
   op = optparse.OptionParser()

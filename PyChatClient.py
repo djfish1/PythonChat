@@ -147,7 +147,7 @@ class MainForm:
 
   def textToBytes(self, text):
     #print('Major verion:', sys.version_info.major)
-    if sys.version_info.major == 2:
+    if sys.version_info[0] == 2:
       #print('Preserving original text,', text)
       retBytes = str(text)
     else:
